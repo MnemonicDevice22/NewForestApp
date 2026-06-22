@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forest</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0e1a12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Forest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root {
+    --bg:         #0e1a12;
+    --bg2:        #162018;
+    --bg3:        #1e2d22;
+    --surface:    #243329;
+    --border:     #2e3f33;
+    --text:       #d4e8d8;
+    --text-muted: #6b8f72;
+    --text-dim:   #3d5442;
+    --active-glow:#f0a832;
+    --active-bg:  #2a2410;
+    --active-bdr: #6b4f10;
+    --dormant-bg: #1a2420;
+    --dormant-bdr:#263030;
+    --dot-self:       #e05a4a;
+    --dot-craft:      #9b72dd;
+    --dot-learning:   #4a9de0;
+    --dot-resources:  #4faa6a;
+    --dot-environment:#2ec4a0;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    max-width: 480px;
+    margin: 0 auto;
+    padding-bottom: 100px;
+  }
+
+  /* Header */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg);
+    padding: 20px 20px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .back-btn {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 15px;
+    cursor: pointer;
+    padding: 4px 0;
+    font-family: inherit;
+  }
+
+  .back-btn.visible { display: flex; }
+
+  .back-btn svg { width: 18px; height: 18px; }
+
+  .header-title {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .header-title .leaf { color: var(--active-glow); }
+
+  .breadcrumb {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: none;
+  }
+
+  .breadcrumb.visible { display: block; }
+
+  /* Seed list */
+  .seed-list {
+    padding: 16px 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 8px 4px 4px;
+  }
+
+  /* Seed card */
+  .seed-card {
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.12s ease, opacity 0.12s ease;
+    position: relative;
+    -webkit-user-select: none;
+  }
+
+  .seed-card:active { transform: scale(0.975); }
+
+  .seed-card.active-seed {
+    background: var(--active-bg);
+    border: 1px solid var(--active-bdr);
+  }
+
+  .seed-card.dormant-seed {
+    background: var(--dormant-bg);
+    border: 1px solid var(--dormant-bdr);
+  }
+
+  .seed-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* Firefly */
+  .firefly {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: background 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .active-seed .firefly {
+    background: var(--active-glow);
+    box-shadow: 0 0 8px 2px rgba(240,168,50,0.4);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+
+  .dormant-seed .firefly {
+    background: var(--text-dim);
+    box-shadow: none;
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 8px 2px rgba(240,168,50,0.4); }
+    50%       { box-shadow: 0 0 14px 4px rgba(240,168,50,0.2); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .active-seed .firefly { animation: none; }
+  }
+
+  .seed-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+    flex: 1;
+    line-height: 1.3;
+  }
+
+  .dormant-seed .seed-title { color: var(--text-muted); }
+
+  .seed-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .root-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+
+  .children-indicator {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .seed-notes {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    margin-left: 20px;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .dormant-seed .seed-notes { color: var(--text-dim); }
+
+  /* Long press ripple */
+  .seed-card.holding {
+    animation: holdpulse 0.5s ease forwards;
+  }
+
+  @keyframes holdpulse {
+    0%   { opacity: 1; }
+    100% { opacity: 0.6; }
+  }
+
+  /* Add button */
+  .add-btn {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--active-glow);
+    color: #1a1200;
+    border: none;
+    border-radius: 50px;
+    padding: 14px 28px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 24px rgba(240,168,50,0.3);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    white-space: nowrap;
+    z-index: 20;
+  }
+
+  .add-btn:active {
+    transform: translateX(-50%) scale(0.96);
+    box-shadow: 0 2px 12px rgba(240,168,50,0.2);
+  }
+
+  /* Sheet overlay */
+  .sheet-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 30;
+    backdrop-filter: blur(2px);
+  }
+
+  .sheet-overlay.open { display: block; }
+
+  .sheet {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    background: var(--bg2);
+    border-radius: 20px 20px 0 0;
+    border-top: 1px solid var(--border);
+    padding: 16px 20px 40px;
+    z-index: 31;
+    display: none;
+  }
+
+  .sheet.open { display: block; }
+
+  .sheet-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+
+  .sheet-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+
+  .field-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .field-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 16px;
+    font-family: inherit;
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color 0.15s;
+    resize: none;
+    margin-bottom: 14px;
+  }
+
+  .field-input:focus { border-color: var(--active-glow); }
+
+  .field-input::placeholder { color: var(--text-dim); }
+
+  /* Root dot selector */
+  .dot-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .dot-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 50px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-muted);
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .dot-option.selected {
+    border-color: var(--active-glow);
+    background: var(--active-bg);
+    color: var(--text);
+  }
+
+  .dot-option-circle {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  /* State toggle in sheet */
+  .state-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .state-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }
+
+  .state-btn.selected-active {
+    border-color: var(--active-bdr);
+    background: var(--active-bg);
+    color: var(--active-glow);
+  }
+
+  .state-btn.selected-dormant {
+    border-color: var(--dormant-bdr);
+    background: var(--dormant-bg);
+    color: var(--text-muted);
+  }
+
+  .state-firefly {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  .selected-active .state-firefly { background: var(--active-glow); }
+  .selected-dormant .state-firefly { background: var(--text-dim); }
+
+  .save-btn {
+    width: 100%;
+    background: var(--active-glow);
+    color: #1a1200;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: opacity 0.12s;
+  }
+
+  .save-btn:active { opacity: 0.8; }
+
+  /* Empty state */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+  }
+
+  .empty-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+    opacity: 0.4;
+  }
+
+  .empty p { font-size: 14px; line-height: 1.6; }
+
+  /* Hint bar */
+  .hint {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 12px 20px 0;
+    letter-spacing: 0.02em;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-row">
+    <button class="back-btn" id="backBtn" onclick="navigateUp()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+      Back
+    </button>
+    <div class="header-title" id="headerTitle">Forest <span class="leaf">🌿</span></div>
+    <div style="width:52px"></div>
+  </div>
+  <div class="breadcrumb" id="breadcrumb"></div>
+</div>
+
+<div class="hint" id="hint">Double-tap to open · Hold to toggle state</div>
+
+<div class="seed-list" id="seedList"></div>
+
+<button class="add-btn" onclick="openSheet()">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  New seed
+</button>
+
+<div class="sheet-overlay" id="overlay" onclick="closeSheet()"></div>
+
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title" id="sheetTitle">Plant a seed</div>
+
+  <div class="field-label">Title</div>
+  <input class="field-input" id="titleInput" type="text" placeholder="A few words..." maxlength="80" autocomplete="off">
+
+  <div class="field-label">Notes</div>
+  <textarea class="field-input" id="notesInput" rows="3" placeholder="Expand when ready..."></textarea>
+
+  <div class="field-label">Root</div>
+  <div class="dot-selector" id="dotSelector">
+    <div class="dot-option selected" data-root="none" onclick="selectRoot(this)">
+      <div class="dot-option-circle" style="background:var(--text-dim)"></div>
+      None
+    </div>
+    <div class="dot-option" data-root="self" onclick="selectRoot(this)">
+      <div class="dot-option-circle" style="background:var(--dot-self)"></div>
+      Self
+    </div>
+    <div class="dot-option" data-root="craft" onclick="selectRoot(this)">
+      <div class="dot-option-circle" style="background:var(--dot-craft)"></div>
+      Craft
+    </div>
+    <div class="dot-option" data-root="learning" onclick="selectRoot(this)">
+      <div class="dot-option-circle" style="background:var(--dot-learning)"></div>
+      Learning
+    </div>
+    <div class="dot-option" data-root="resources" onclick="selectRoot(this)">
+      <div class="dot-option-circle" style="background:var(--dot-resources)"></div>
+      Resources
+    </div>
+    <div class="dot-option" data-root="environment" onclick="selectRoot(this)">
+      <div class="dot-option-circle" style="background:var(--dot-environment)"></div>
+      Environment
+    </div>
+  </div>
+
+  <div class="field-label">State</div>
+  <div class="state-row">
+    <button class="state-btn selected-active" id="stateActive" onclick="selectState('active')">
+      <div class="state-firefly"></div>
+      Active
+    </button>
+    <button class="state-btn" id="stateDormant" onclick="selectState('dormant')">
+      <div class="state-firefly"></div>
+      Dormant
+    </button>
+  </div>
+
+  <button class="save-btn" onclick="saveSeed()">Plant it</button>
+</div>
+
+<script>
+const ROOT_COLORS = {
+  none: 'var(--text-dim)',
+  self: 'var(--dot-self)',
+  craft: 'var(--dot-craft)',
+  learning: 'var(--dot-learning)',
+  resources: 'var(--dot-resources)',
+  environment: 'var(--dot-environment)'
+};
+
+let seeds = JSON.parse(localStorage.getItem('forest_seeds') || '[]');
+let currentParentId = null;
+let navigationStack = [];
+let editingId = null;
+let selectedRoot = 'none';
+let selectedState = 'active';
+
+function save() {
+  localStorage.setItem('forest_seeds', JSON.stringify(seeds));
+}
+
+function getChildren(parentId) {
+  return seeds.filter(s => s.parentId === parentId);
+}
+
+function getSeed(id) {
+  return seeds.find(s => s.id === id);
+}
+
+function getBreadcrumb() {
+  if (!navigationStack.length) return '';
+  return navigationStack.map(id => getSeed(id)?.title || '').filter(Boolean).join(' › ');
+}
+
+function render() {
+  const list = document.getElementById('seedList');
+  const children = getChildren(currentParentId);
+
+  const backBtn = document.getElementById('backBtn');
+  const headerTitle = document.getElementById('headerTitle');
+  const breadcrumb = document.getElementById('breadcrumb');
+  const hint = document.getElementById('hint');
+
+  if (currentParentId) {
+    const current = getSeed(currentParentId);
+    backBtn.classList.add('visible');
+    headerTitle.textContent = current?.title || 'Forest';
+    const bc = getBreadcrumb();
+    if (bc) {
+      breadcrumb.textContent = bc;
+      breadcrumb.classList.add('visible');
+    }
+    hint.style.display = 'none';
+  } else {
+    backBtn.classList.remove('visible');
+    headerTitle.innerHTML = 'Forest <span class="leaf">🌿</span>';
+    breadcrumb.classList.remove('visible');
+    hint.style.display = 'block';
+  }
+
+  if (!children.length) {
+    list.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🌱</div>
+        <p>No seeds yet.<br>Plant the first one.</p>
+      </div>`;
+    return;
+  }
+
+  const active = children.filter(s => s.state === 'active');
+  const dormant = children.filter(s => s.state === 'dormant');
+
+  let html = '';
+
+  if (active.length && currentParentId === null) {
+    html += `<div class="section-label">Active</div>`;
+  }
+  active.forEach(s => { html += seedHTML(s); });
+
+  if (dormant.length && currentParentId === null) {
+    html += `<div class="section-label">Resting</div>`;
+  }
+  dormant.forEach(s => { html += seedHTML(s); });
+
+  list.innerHTML = html;
+  attachGestures();
+}
+
+function seedHTML(s) {
+  const childCount = getChildren(s.id).length;
+  const dotColor = ROOT_COLORS[s.root] || ROOT_COLORS.none;
+  return `
+    <div class="seed-card ${s.state === 'active' ? 'active-seed' : 'dormant-seed'}"
+         data-id="${s.id}">
+      <div class="seed-top">
+        <div class="firefly"></div>
+        <div class="seed-title">${escHtml(s.title)}</div>
+        <div class="seed-right">
+          ${s.root !== 'none' ? `<div class="root-dot" style="background:${dotColor}"></div>` : ''}
+          ${childCount ? `<div class="children-indicator">${childCount} ›</div>` : ''}
+        </div>
+      </div>
+      ${s.notes ? `<div class="seed-notes">${escHtml(s.notes)}</div>` : ''}
+    </div>`;
+}
+
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function attachGestures() {
+  document.querySelectorAll('.seed-card').forEach(card => {
+    const id = card.dataset.id;
+    let tapCount = 0;
+    let tapTimer = null;
+    let holdTimer = null;
+    let holding = false;
+
+    card.addEventListener('pointerdown', () => {
+      holding = false;
+      holdTimer = setTimeout(() => {
+        holding = true;
+        card.classList.add('holding');
+        toggleState(id);
+        setTimeout(() => card.classList.remove('holding'), 400);
+      }, 500);
+    });
+
+    card.addEventListener('pointerup', () => {
+      clearTimeout(holdTimer);
+      if (holding) return;
+
+      tapCount++;
+      if (tapCount === 1) {
+        tapTimer = setTimeout(() => { tapCount = 0; }, 350);
+      } else if (tapCount === 2) {
+        clearTimeout(tapTimer);
+        tapCount = 0;
+        drillInto(id);
+      }
+    });
+
+    card.addEventListener('pointerleave', () => {
+      clearTimeout(holdTimer);
+    });
+  });
+}
+
+function toggleState(id) {
+  const s = getSeed(id);
+  if (!s) return;
+  s.state = s.state === 'active' ? 'dormant' : 'active';
+  save();
+  render();
+}
+
+function drillInto(id) {
+  navigationStack.push(currentParentId);
+  currentParentId = id;
+  render();
+  window.scrollTo(0, 0);
+}
+
+function navigateUp() {
+  currentParentId = navigationStack.pop() ?? null;
+  render();
+  window.scrollTo(0, 0);
+}
+
+function openSheet(editId = null) {
+  editingId = editId;
+  selectedRoot = 'none';
+  selectedState = 'active';
+
+  document.getElementById('sheetTitle').textContent = editId ? 'Edit seed' : 'Plant a seed';
+
+  if (editId) {
+    const s = getSeed(editId);
+    document.getElementById('titleInput').value = s.title;
+    document.getElementById('notesInput').value = s.notes || '';
+    selectedRoot = s.root || 'none';
+    selectedState = s.state || 'active';
+  } else {
+    document.getElementById('titleInput').value = '';
+    document.getElementById('notesInput').value = '';
+  }
+
+  document.querySelectorAll('.dot-option').forEach(o => {
+    o.classList.toggle('selected', o.dataset.root === selectedRoot);
+  });
+
+  updateStateUI();
+
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('sheet').classList.add('open');
+  setTimeout(() => document.getElementById('titleInput').focus(), 100);
+}
+
+function closeSheet() {
+  document.getElementById('overlay').classList.remove('open');
+  document.getElementById('sheet').classList.remove('open');
+  editingId = null;
+}
+
+function selectRoot(el) {
+  selectedRoot = el.dataset.root;
+  document.querySelectorAll('.dot-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function selectState(state) {
+  selectedState = state;
+  updateStateUI();
+}
+
+function updateStateUI() {
+  const aBtn = document.getElementById('stateActive');
+  const dBtn = document.getElementById('stateDormant');
+  aBtn.className = 'state-btn' + (selectedState === 'active' ? ' selected-active' : '');
+  dBtn.className = 'state-btn' + (selectedState === 'dormant' ? ' selected-dormant' : '');
+}
+
+function saveSeed() {
+  const title = document.getElementById('titleInput').value.trim();
+  if (!title) {
+    document.getElementById('titleInput').focus();
+    return;
+  }
+
+  if (editingId) {
+    const s = getSeed(editingId);
+    s.title = title;
+    s.notes = document.getElementById('notesInput').value.trim();
+    s.root = selectedRoot;
+    s.state = selectedState;
+  } else {
+    seeds.push({
+      id: Date.now().toString(),
+      title,
+      notes: document.getElementById('notesInput').value.trim(),
+      parentId: currentParentId,
+      root: selectedRoot,
+      state: selectedState,
+      createdAt: Date.now()
+    });
+  }
+
+  save();
+  closeSheet();
+  render();
+}
+
+render();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js');
+  });
+}
+</script>
+</body>
+</html>
